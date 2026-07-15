@@ -17,25 +17,31 @@ Real-time statistics dashboard for OpenWrt 25+ — CPU load, memory usage, and n
 
 ## Install
 
-### Quick install (via SSH)
+### One-liner (SSH into router)
 
 ```sh
-git clone https://github.com/ahu1e/stsatpage.git
-cd stsatpage
-chmod +x install.sh
-./install.sh root@192.168.1.1
+curl -sL https://raw.githubusercontent.com/ahu1e/stsatpage/main/install.sh | sh
 ```
 
-### Manual install
+### Interactive menu
 
-```sh
-# Copy files to router
-scp root/www/cgi-bin/luci-statistics-dashboard root@router:/www/cgi-bin/
-scp ucode/template/statistics-dashboard/dashboard.ut root@router:/usr/share/luci/template/statistics-dashboard/
-scp root/usr/share/luci/menu.d/luci-app-statistics-dashboard.json root@router:/usr/share/luci/menu.d/
+```
+╔══════════════════════════════════════════╗
+║     LuCI Statistics Dashboard           ║
+║     CPU · RAM · Network graphs          ║
+╚══════════════════════════════════════════╝
 
-# Set permissions and restart
-ssh root@router "chmod +x /www/cgi-bin/luci-statistics-dashboard && /etc/init.d/uhttpd restart"
+  Статус: Не установлен
+
+  Выберите действие:
+
+  1) Установить
+  2) Удалить
+  3) Обновить
+  4) Проверить статус
+  5) Выход
+
+  >>>
 ```
 
 ### Build as OpenWrt package
