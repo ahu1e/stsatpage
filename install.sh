@@ -5,7 +5,6 @@ set -e
 REPO="https://github.com/ahu1e/stsatpage"
 ARCHIVE="$REPO/archive/refs/heads/main.tar.gz"
 TMPDIR="/tmp/luci-app-statistics-dashboard"
-PKG="luci-app-statistics-dashboard"
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -74,7 +73,8 @@ do_install() {
 	rm -rf "$TMPDIR"
 
 	echo ""
-	printf "  ${GREEN}Готово!${NC} Открой: http://$(uci get network.lan.ipaddr)/cgi-bin/luci-statistics-dashboard\n"
+	printf "  ${GREEN}Готово!${NC}\n"
+	printf "  Открой LuCI: Status → Statistics → Dashboard\n"
 }
 
 do_uninstall() {
@@ -88,7 +88,7 @@ do_uninstall() {
 	/etc/init.d/uhttpd restart
 
 	printf "  ${BLUE}[3/3]${NC} Готово!\n\n"
-	printf "  ${GREEN}Пакет удалён.${NC} Обнови страницу в браузере (Ctrl+Shift+R)\n"
+	printf "  ${GREEN}Пакет удалён.${NC} Обнови страницу (Ctrl+Shift+R)\n"
 }
 
 do_update() {
@@ -125,7 +125,8 @@ do_update() {
 	rm -rf "$TMPDIR"
 
 	echo ""
-	printf "  ${GREEN}Обновлено!${NC} Открой: http://$(uci get network.lan.ipaddr)/cgi-bin/luci-statistics-dashboard\n"
+	printf "  ${GREEN}Обновлено!${NC}\n"
+	printf "  Открой LuCI: Status → Statistics → Dashboard\n"
 }
 
 do_status() {
@@ -137,8 +138,6 @@ do_status() {
 		echo "    /www/cgi-bin/luci-statistics-dashboard"
 		echo "    /usr/share/luci/menu.d/luci-app-statistics-dashboard.json"
 		echo "    /usr/share/luci/template/statistics-dashboard/dashboard.ut"
-		echo ""
-		echo "  URL: http://$(uci get network.lan.ipaddr)/cgi-bin/luci-statistics-dashboard"
 	else
 		printf "  ${RED}Пакет не установлен${NC}\n"
 	fi
@@ -151,6 +150,14 @@ wait_key() {
 }
 
 [ "$(id -u)" = "0" ] || { printf "  ${RED}Запусти от root!${NC}\n"; exit 1; }
+
+if [ ! -t 0 ]; then
+	printf "  ${YELLOW}Интерактивный режим не доступен (pipe).${NC}\n"
+	printf "  Скопируй скрипт и запусти локально:\n\n"
+	printf "    wget https://raw.githubusercontent.com/ahu1e/stsatpage/main/install.sh\n"
+	printf "    sh install.sh\n\n"
+	exit 1
+fi
 
 while true; do
 	banner

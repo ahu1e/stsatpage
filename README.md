@@ -17,10 +17,11 @@ Real-time statistics dashboard for OpenWrt 25+ — CPU load, memory usage, and n
 
 ## Install
 
-### One-liner (SSH into router)
+SSH into router and run:
 
 ```sh
-curl -sL https://raw.githubusercontent.com/ahu1e/stsatpage/main/install.sh | sh
+wget https://raw.githubusercontent.com/ahu1e/stsatpage/main/install.sh
+sh install.sh
 ```
 
 ### Interactive menu
@@ -44,22 +45,9 @@ curl -sL https://raw.githubusercontent.com/ahu1e/stsatpage/main/install.sh | sh
   >>>
 ```
 
-### Build as OpenWrt package
-
-```sh
-# Copy to OpenWrt feeds
-cp -r luci-app-statistics-dashboard /path/to/openwrt/feeds/luci/applications/
-
-# Build
-cd /path/to/openwrt
-./scripts/feeds update luci
-make package/luci-app-statistics-dashboard/compile V=s
-```
-
 ## Usage
 
-- **LuCI menu**: Status → Statistics → Dashboard
-- **Direct URL**: `http://router/cgi-bin/luci-statistics-dashboard`
+- **LuCI menu**: Services → Statistics Dashboard
 
 ## API
 
