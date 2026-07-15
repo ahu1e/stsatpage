@@ -2,7 +2,8 @@
 
 set -e
 
-REPO="https://github.com/ahu1e/stsatpage.git"
+REPO="https://github.com/ahu1e/stsatpage"
+ARCHIVE="$REPO/archive/refs/heads/main.tar.gz"
 TMPDIR="/tmp/luci-app-statistics-dashboard"
 
 do_install() {
@@ -10,9 +11,10 @@ do_install() {
 
 	[ "$(id -u)" = "0" ] || { echo "Запусти от root: sh install.sh"; exit 1; }
 
-	echo "[1/5] Клонирование репозитория..."
+	echo "[1/5] Скачивание..."
 	rm -rf "$TMPDIR"
-	git clone --depth 1 "$REPO" "$TMPDIR"
+	mkdir -p "$TMPDIR"
+	wget -q -O - "$ARCHIVE" | tar xz -C "$TMPDIR" --strip-components=1
 
 	echo "[2/5] Установка шаблона..."
 	mkdir -p /usr/share/luci/template/statistics-dashboard
@@ -51,7 +53,7 @@ do_uninstall() {
 	echo "[2/3] Перезапуск uhttpd..."
 	/etc/init.d/uhttpd restart
 
-	echo "[3/3] Очистка кэша браузера — обнови страницу (Ctrl+Shift+R)"
+	echo "[3/3] Обнови страницу в браузере (Ctrl+Shift+R)"
 
 	echo ""
 	echo "Готово! Пакет удалён."
