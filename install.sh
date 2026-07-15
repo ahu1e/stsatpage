@@ -16,8 +16,11 @@ NC='\033[0m'
 
 [ "$(id -u)" = "0" ] || { printf "${RED}Запусти от root!${NC}\n"; exit 1; }
 
+installed=0
+[ -f /www/cgi-bin/luci-statistics-dashboard ] && installed=1
+
 do_install() {
-	printf "${BLUE}[1/5]${NC} Скачивание...\n"
+	printf "\n${BLUE}[1/5]${NC} Скачивание...\n"
 	rm -rf "$TMPDIR"
 	mkdir -p "$TMPDIR"
 	wget -q -O - "$ARCHIVE" | tar xz -C "$TMPDIR"
@@ -42,13 +45,12 @@ do_install() {
 	/etc/init.d/uhttpd restart
 
 	rm -rf "$TMPDIR"
-
-	echo ""
-	printf "${GREEN}Готово!${NC} Открой LuCI: Services → Statistics Dashboard\n"
+	installed=1
+	printf "\n${GREEN}Готово!${NC} Открой LuCI: Services → Statistics Dashboard\n"
 }
 
 do_uninstall() {
-	printf "${BLUE}[1/3]${NC} Удаление файлов...\n"
+	printf "\n${BLUE}[1/3]${NC} Удаление файлов...\n"
 	rm -f /www/cgi-bin/luci-statistics-dashboard
 	rm -f /usr/share/luci/menu.d/luci-app-statistics-dashboard.json
 	rm -rf /usr/share/luci/template/statistics-dashboard
@@ -56,36 +58,9 @@ do_uninstall() {
 	printf "${BLUE}[2/3]${NC} Перезапуск uhttpd...\n"
 	/etc/init.d/uhttpd restart
 
+	installed=0
 	printf "${BLUE}[3/3]${NC} ${GREEN}Готово!${NC} Пакет удалён.\n"
 }
-
-do_update() {
-	rm -f /www/cgi-bin/luci-statistics-dashboard
-	rm -f /usr/share/luci/menu.d/luci-app-statistics-dashboard.json
-	rm -rf /usr/share/luci/template/statistics-dashboard
-
-	printf "${YELLOW}Обновление...${NC}\n"
-	do_install
-}
-
-do_status() {
-	if [ -f /www/cgi-bin/luci-statistics-dashboard ]; then
-		printf "${GREEN}Установлен${NC}\n"
-	else
-		printf "${RED}Не установлен${NC}\n"
-	fi
-}
-
-# ── Pipe mode: автоустановка ──
-if [ ! -t 0 ]; then
-	echo "=== LuCI Statistics Dashboard ==="
-	do_install
-	exit 0
-fi
-
-# ── Interactive mode: меню ──
-installed=0
-[ -f /www/cgi-bin/luci-statistics-dashboard ] && installed=1
 
 while true; do
 	clear
@@ -105,9 +80,7 @@ while true; do
 	printf "${BOLD}  Выберите:${NC}\n\n"
 	printf "  ${GREEN}1)${NC} Установить\n"
 	printf "  ${RED}2)${NC} Удалить\n"
-	printf "  ${YELLOW}3)${NC} Обновить\n"
-	printf "  ${BLUE}4)${NC} Статус\n"
-	printf "  ${CYAN}5)${NC} Выход\n\n"
+	printf "  ${CYAN}3)${NC} Выход\n\n"
 	printf "  >>> "
 	read -r choice
 
@@ -120,15 +93,13 @@ while true; do
 				printf "  ${RED}Удалить? (y/N):${NC} "
 				read -r c
 				case "$c" in
-					[yY]|[yY][eE][sS]) do_uninstall; installed=0 ;;
+					[yY]|[yY][eE][sS]) do_uninstall ;;
 					*) printf "  Отмена.\n" ;;
 				esac
 			fi
 			;;
-		3) do_update; installed=1 ;;
-		4) do_status ;;
-		5) printf "\n  ${GREEN}Пока!${NC}\n"; exit 0 ;;
-		*) printf "\n  ${RED}1-5${NC}\n" ;;
+		3) printf "\n  ${GREEN}Пока!${NC}\n"; exit 0 ;;
+		*) printf "\n  ${RED}1-3${NC}\n" ;;
 	esac
 
 	echo ""
