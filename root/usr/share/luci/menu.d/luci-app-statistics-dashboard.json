@@ -1,21 +1,13 @@
 {
-	"admin/statistics": {
-		"title": "Statistics",
+	"admin/services/statistics-dashboard": {
+		"title": "Statistics Dashboard",
 		"order": 60,
-		"action": {
-			"type": "firstchild"
-		},
-		"depends": {
-			"acl": [ "luci-app-statistics-dashboard" ]
-		}
-	},
-
-	"admin/statistics/dashboard": {
-		"title": "Dashboard",
-		"order": 1,
 		"action": {
 			"type": "template",
 			"path": "statistics-dashboard/dashboard"
+		},
+		"depends": {
+			"acl": [ "luci-app-statistics-dashboard" ]
 		}
 	}
 }

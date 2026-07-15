@@ -1,40 +1,70 @@
 # luci-app-statistics-dashboard
 
-Реалтайм-дашборд статистики для OpenWrt 25+ — графики CPU, RAM, сети.
+Real-time statistics dashboard for OpenWrt 25+ — CPU load, memory usage, and network traffic graphs.
 
-Без зависимости от Lua и git. Использует ucode-шаблоны + shell CGI.
+## Features
 
-![OpenWrt](https://img.shields.io/badge/OpenWrt-25%2B-brightgreen)
+- **CPU usage** — per-core and total load graphs
+- **Memory** — RAM usage with used/free/buffers/cached breakdown
+- **Network traffic** — RX/TX bytes per active interface
+- **Dark mode** toggle with localStorage persistence
+- **Real-time polling** every 2 seconds
 
-## Установка
+## Requirements
+
+- OpenWrt 24+ (ucode-based LuCI)
+- `luci-base` (no Lua dependency)
+
+## Install
+
+### Quick install (via SSH)
 
 ```sh
-wget -O - https://raw.githubusercontent.com/ahu1e/stsatpage/main/install.sh | sh
+git clone https://github.com/ahu1e/stsatpage.git
+cd stsatpage
+chmod +x install.sh
+./install.sh root@192.168.1.1
 ```
 
-После установки открой: `http://<ip-роутера>/cgi-bin/luci-statistics-dashboard`
-
-## Удаление
+### Manual install
 
 ```sh
-wget -O - https://raw.githubusercontent.com/ahu1e/stsatpage/main/install.sh | sh -s -- --uninstall
+# Copy files to router
+scp root/www/cgi-bin/luci-statistics-dashboard root@router:/www/cgi-bin/
+scp ucode/template/statistics-dashboard/dashboard.ut root@router:/usr/share/luci/template/statistics-dashboard/
+scp root/usr/share/luci/menu.d/luci-app-statistics-dashboard.json root@router:/usr/share/luci/menu.d/
+
+# Set permissions and restart
+ssh root@router "chmod +x /www/cgi-bin/luci-statistics-dashboard && /etc/init.d/uhttpd restart"
 ```
+
+### Build as OpenWrt package
+
+```sh
+# Copy to OpenWrt feeds
+cp -r luci-app-statistics-dashboard /path/to/openwrt/feeds/luci/applications/
+
+# Build
+cd /path/to/openwrt
+./scripts/feeds update luci
+make package/luci-app-statistics-dashboard/compile V=s
+```
+
+## Usage
+
+- **LuCI menu**: Status → Statistics → Dashboard
+- **Direct URL**: `http://router/cgi-bin/luci-statistics-dashboard`
 
 ## API
 
-| Действие | Описание |
-|----------|----------|
-| `cpu` | Загрузка по ядрам из `/proc/stat` |
-| `ram` | Статистика памяти из `/proc/meminfo` |
-| `traffic` | RX/TX байты по интерфейсам из `/sys/class/net` |
+The CGI backend exposes these endpoints:
 
-Пример: `http://router/cgi-bin/luci-statistics-dashboard?action=cpu`
+| Action | Description |
+|--------|-------------|
+| `?action=cpu` | CPU stats per core |
+| `?action=ram` | Memory usage |
+| `?action=traffic` | Network bytes per interface |
 
-## Требования
-
-- OpenWrt 24+ с LuCI (ucode)
-- `luci-base` (включён по умолчанию)
-
-## Лицензия
+## License
 
 MIT

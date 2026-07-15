@@ -67,4 +67,3 @@ case "${1:-}" in
 		do_install
 		;;
 esac
-# Wed Jul 15 22:05:44 MSK 2026
