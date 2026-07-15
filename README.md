@@ -36,10 +36,13 @@ ssh root@router "chmod +x /www/cgi-bin/luci-statistics-dashboard && /etc/init.d/
 ## Удаление
 
 ```sh
-rm -f /www/cgi-bin/luci-statistics-dashboard
-rm -f /usr/share/luci/menu.d/luci-app-statistics-dashboard.json
-rm -rf /usr/share/luci/template/statistics-dashboard
-/etc/init.d/uhttpd restart
+wget -O - https://raw.githubusercontent.com/ahu1e/stsatpage/main/install.sh | sh -s -- --uninstall
+```
+
+Или если склонировано:
+
+```sh
+sh install.sh --uninstall
 ```
 
 ## API
