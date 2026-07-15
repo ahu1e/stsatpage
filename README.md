@@ -17,14 +17,11 @@ Real-time statistics dashboard for OpenWrt 25+ — CPU load, memory usage, and n
 
 ## Install
 
-SSH into router and run:
-
 ```sh
-wget https://raw.githubusercontent.com/ahu1e/stsatpage/main/install.sh
-sh install.sh
+curl -sL https://raw.githubusercontent.com/ahu1e/stsatpage/main/install.sh | sh
 ```
 
-### Interactive menu
+### Interactive menu (local run)
 
 ```
 ╔══════════════════════════════════════════╗
