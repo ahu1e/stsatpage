@@ -20,28 +20,33 @@ installed=0
 [ -f /www/cgi-bin/luci-statistics-dashboard ] && installed=1
 
 do_install() {
-	printf "\n${BLUE}[1/5]${NC} Скачивание...\n"
+	printf "\n${BLUE}[1/6]${NC} Скачивание...\n"
 	rm -rf "$TMPDIR"
 	mkdir -p "$TMPDIR"
 	wget -q -O - "$ARCHIVE" | tar xz -C "$TMPDIR"
 	SRC=$(find "$TMPDIR" -maxdepth 1 -type d | tail -1)
 
-	printf "${BLUE}[2/5]${NC} Установка шаблона...\n"
+	printf "${BLUE}[2/6]${NC} Установка шаблона...\n"
 	mkdir -p /usr/share/luci/template/statistics-dashboard
 	cp "$SRC/ucode/template/statistics-dashboard/dashboard.ut" \
 	   /usr/share/luci/template/statistics-dashboard/
 
-	printf "${BLUE}[3/5]${NC} Установка меню...\n"
+	printf "${BLUE}[3/6]${NC} Установка меню...\n"
 	mkdir -p /usr/share/luci/menu.d
 	cp "$SRC/root/usr/share/luci/menu.d/luci-app-statistics-dashboard.json" \
 	   /usr/share/luci/menu.d/
 
-	printf "${BLUE}[4/5]${NC} Установка CGI API...\n"
+	printf "${BLUE}[4/6]${NC} Установка ACL...\n"
+	mkdir -p /usr/share/luci/acl.d
+	cp "$SRC/root/usr/share/luci/acl.d/luci-app-statistics-dashboard.json" \
+	   /usr/share/luci/acl.d/
+
+	printf "${BLUE}[5/6]${NC} Установка CGI API...\n"
 	mkdir -p /www/cgi-bin
 	cp "$SRC/root/www/cgi-bin/luci-statistics-dashboard" /www/cgi-bin/
 	chmod +x /www/cgi-bin/luci-statistics-dashboard
 
-	printf "${BLUE}[5/5]${NC} Перезапуск uhttpd...\n"
+	printf "${BLUE}[6/6]${NC} Перезапуск uhttpd...\n"
 	/etc/init.d/uhttpd restart
 
 	rm -rf "$TMPDIR"
@@ -53,6 +58,7 @@ do_uninstall() {
 	printf "\n${BLUE}[1/3]${NC} Удаление файлов...\n"
 	rm -f /www/cgi-bin/luci-statistics-dashboard
 	rm -f /usr/share/luci/menu.d/luci-app-statistics-dashboard.json
+	rm -f /usr/share/luci/acl.d/luci-app-statistics-dashboard.json
 	rm -rf /usr/share/luci/template/statistics-dashboard
 
 	printf "${BLUE}[2/3]${NC} Перезапуск uhttpd...\n"

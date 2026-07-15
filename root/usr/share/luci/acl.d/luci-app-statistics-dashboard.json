@@ -1,0 +1,11 @@
+{
+	"luci-app-statistics-dashboard": {
+		"description": "Statistics Dashboard",
+		"read": {
+			"unauthenticated": true
+		},
+		"write": {
+			"unauthenticated": true
+		}
+	}
+}
