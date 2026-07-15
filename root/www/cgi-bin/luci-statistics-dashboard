@@ -1,0 +1,92 @@
+#!/bin/sh
+
+decode() {
+	echo "$1" | sed 's/+/ /g; s/%\([0-9A-Fa-f][0-9A-Fa-f]\)/\\x\1/g' | xargs -0 printf '%s' 2>/dev/null || echo "$1"
+}
+
+ACTION=""
+if [ -n "$QUERY_STRING" ]; then
+	for param in $(echo "$QUERY_STRING" | tr '&' ' '); do
+		key="${param%%=*}"
+		val="${param#*=}"
+		if [ "$key" = "action" ]; then
+			ACTION=$(decode "$val")
+		fi
+	done
+fi
+
+echo "Content-Type: application/json"
+echo "Cache-Control: no-cache"
+echo ""
+
+case "$ACTION" in
+	cpu)
+		echo '{"cores":['
+		first=1
+		while IFS= read -r line; do
+			case "$line" in cpu*) ;; *) continue ;; esac
+			name=$(echo "$line" | awk '{print $1}')
+			[ "$name" = "cpu" ] && name="total"
+			user=$(echo "$line" | awk '{print $2}')
+			nice=$(echo "$line" | awk '{print $3}')
+			system=$(echo "$line" | awk '{print $4}')
+			idle=$(echo "$line" | awk '{print $5}')
+			iowait=$(echo "$line" | awk '{print $6}')
+			irq=$(echo "$line" | awk '{print $7}')
+			softirq=$(echo "$line" | awk '{print $8}')
+			[ "$first" = "0" ] && printf ","
+			first=0
+			printf '{"name":"%s","user":%s,"nice":%s,"system":%s,"idle":%s,"iowait":%s,"irq":%s,"softirq":%s}' \
+				"$name" "$user" "$nice" "$system" "$idle" "$iowait" "$irq" "$softirq"
+		done < /proc/stat
+		echo ']}'
+		;;
+
+	ram)
+		MemTotal=0; MemFree=0; Buffers=0; Cached=0; SReclaimable=0; MemAvailable=""
+		while IFS= read -r line; do
+			key="${line%%:*}"
+			val=$(echo "$line" | grep -o '[0-9]*' | head -1)
+			case "$key" in
+				MemTotal) MemTotal=$val ;;
+				MemFree) MemFree=$val ;;
+				Buffers) Buffers=$val ;;
+				Cached) Cached=$val ;;
+				SReclaimable) SReclaimable=$val ;;
+				MemAvailable) MemAvailable=$val ;;
+			esac
+		done < /proc/meminfo
+
+		if [ -z "$MemAvailable" ]; then
+			Available=$((MemFree + Buffers + Cached + SReclaimable))
+		else
+			Available=$MemAvailable
+		fi
+		Used=$((MemTotal - Available))
+
+		printf '{"total":%s,"used":%s,"free":%s,"buffers":%s,"cached":%s,"available":%s}' \
+			"$MemTotal" "$Used" "$MemFree" "$Buffers" "$Cached" "$Available"
+		;;
+
+	traffic)
+		first_iface=1
+		printf '{'
+		for dir in /sys/class/net/*; do
+			[ -d "$dir" ] || continue
+			iface=$(basename "$dir")
+			[ "$iface" = "lo" ] && continue
+			state=$(cat "$dir/operstate" 2>/dev/null | tr -d '[:space:]')
+			[ "$state" != "up" ] && continue
+			rx=$(cat "$dir/statistics/rx_bytes" 2>/dev/null || echo 0)
+			tx=$(cat "$dir/statistics/tx_bytes" 2>/dev/null || echo 0)
+			[ "$first_iface" = "0" ] && printf ","
+			first_iface=0
+			printf '"%s":{"rx":%s,"tx":%s}' "$iface" "$rx" "$tx"
+		done
+		printf '}'
+		;;
+
+	*)
+		echo '{"error":"unknown action"}'
+		;;
+esac

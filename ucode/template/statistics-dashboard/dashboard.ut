@@ -1,0 +1,179 @@
+{%#
+  Statistics Dashboard — CPU, RAM, Network graphs
+%}
+
+<%+header %>
+<style>
+	:root{--bg:#f8f9fa;--card:#fff;--text:#212529;--muted:#6c757d;--border:#dee2e6;--blue:#4dabf7;--green:#51cf66;--orange:#ffa94d}
+	body.dark{--bg:#1a1b1e;--card:#25262b;--text:#c1c2c5;--muted:#909296;--border:#373a40}
+	.dw{padding:16px;background:var(--bg);min-height:80vh}
+	.dh{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:8px}
+	.dh h2{margin:0;color:var(--text);font-weight:600;font-size:1.4rem}
+	.dc{display:flex;gap:6px;align-items:center}
+	.dc button{padding:6px 14px;border-radius:8px;border:1px solid var(--border);background:var(--card);color:var(--text);cursor:pointer;font-size:13px;transition:all .2s}
+	.dc button:hover{border-color:var(--blue);color:var(--blue)}
+	.dc button.on{background:var(--blue);color:#fff;border-color:var(--blue)}
+	.tt{width:36px;height:36px;border-radius:50%;border:1px solid var(--border);background:var(--card);color:var(--text);cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center}
+	.sr{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:16px}
+	.sc{background:var(--card);border-radius:12px;padding:20px;border:1px solid var(--border);box-shadow:0 1px 3px rgba(0,0,0,.08);text-align:center}
+	.sc .lb{font-size:12px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin-bottom:8px}
+	.sc .vl{font-size:2.2rem;font-weight:700;line-height:1}
+	.sc .un{font-size:.9rem;font-weight:400;color:var(--muted);margin-left:2px}
+	.sc.cpu .vl{color:var(--blue)}.sc.ram .vl{color:var(--green)}.sc.net .vl{color:var(--orange)}
+	.cr{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:16px}
+	.cc{background:var(--card);border-radius:12px;padding:16px;border:1px solid var(--border);box-shadow:0 1px 3px rgba(0,0,0,.08)}
+	.cc h3{margin:0 0 12px;font-size:14px;font-weight:600;color:var(--text)}
+	.ct{position:relative;height:220px}
+	@media(max-width:900px){.sr,.cr{grid-template-columns:1fr}}
+	body.dark .sc,body.dark .cc{box-shadow:0 1px 6px rgba(0,0,0,.3)}
+</style>
+
+<div class="dw">
+	<div class="dh">
+		<h2><%: Statistics Dashboard :%></h2>
+		<div class="dc">
+			<button class="on" data-r="60"><%: Realtime :%></button>
+			<button data-r="1800"><%: 1 Hour :%></button>
+			<button data-r="43200"><%: 12 Hours :%></button>
+			<button class="tt" id="tb">&#127769;</button>
+		</div>
+	</div>
+	<div class="sr">
+		<div class="sc cpu"><div class="lb"><%: CPU Load :%></div><div class="vl" id="cv">--<span class="un">%</span></div></div>
+		<div class="sc ram"><div class="lb"><%: Memory Used :%></div><div class="vl" id="rv">--<span class="un">MB</span></div></div>
+		<div class="sc net"><div class="lb"><%: Network Total :%></div><div class="vl" id="nv">--<span class="un">KB/s</span></div></div>
+	</div>
+	<div class="cr">
+		<div class="cc"><h3><%: CPU Usage :%></h3><div class="ct"><canvas id="cp"></canvas></div></div>
+		<div class="cc"><h3><%: Memory :%></h3><div class="ct"><canvas id="rp"></canvas></div></div>
+		<div class="cc"><h3><%: Network Traffic :%></h3><div class="ct"><canvas id="np"></canvas></div></div>
+	</div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<script>
+(function(){
+var A='/cgi-bin/luci-statistics-dashboard',P=2000,M=60,prevCpu=null,prevTr={},dark=false;
+var cpuH={},ramH=[],netH={},netIf=[];
+var cols=['#4dabf7','#51cf66','#ffa94d','#ff6b6b','#9775fa','#f06595','#20c997','#fcc419'];
+
+function gc(){return dark?'rgba(255,255,255,.1)':'rgba(0,0,0,.08)'}
+function tc(){return dark?'#c1c2c5':'#212529'}
+function tl(){var d=new Date();return(d.getHours()+'').padStart(2,'0')+':'+(d.getMinutes()+'').padStart(2,'0')+':'+(d.getSeconds()+'').padStart(2,'0')}
+function fb(b){if(b>=1073741824)return(b/1073741824).toFixed(1)+' GB';if(b>=1048576)return(b/1048576).toFixed(1)+' MB';if(b>=1024)return(b/1024).toFixed(1)+' KB';return b+' B'}
+function fbs(b){if(b>=1048576)return(b/1048576).toFixed(1);if(b>=1024)return(b/1024).toFixed(1);return b.toFixed(0)}
+function bu(b){if(b>=1048576)return'MB/s';if(b>=1024)return'KB/s';return'B/s'}
+
+var cpuCtx=document.getElementById('cp').getContext('2d');
+function cpuOpts(){return{responsive:true,maintainAspectRatio:false,interaction:{intersect:false,mode:'index'},plugins:{legend:{labels:{color:tc(),font:{size:11}}}},scales:{x:{display:false},y:{min:0,max:100,grid:{color:gc()},ticks:{color:tc(),callback:function(v){return v+'%'}}}},animation:{duration:300}}}
+var cpuChart=new Chart(cpuCtx,{type:'line',data:{labels:[],datasets:[]},options:cpuOpts()});
+
+var ramCtx=document.getElementById('rp').getContext('2d');
+var ramChart=new Chart(ramCtx,{type:'line',data:{labels:[],datasets:[{label:'RAM %',data:[],borderColor:'#51cf66',backgroundColor:'rgba(81,207,102,.15)',fill:true,tension:.4,pointRadius:0}]},options:{responsive:true,maintainAspectRatio:false,interaction:{intersect:false,mode:'index'},plugins:{legend:{display:false}},scales:{x:{display:false},y:{min:0,max:100,grid:{color:gc()},ticks:{color:tc(),callback:function(v){return v+'%'}}}},animation:{duration:300}}});
+
+var netCtx=document.getElementById('np').getContext('2d');
+function netOpts(){return{responsive:true,maintainAspectRatio:false,interaction:{intersect:false,mode:'index'},plugins:{legend:{labels:{color:tc(),font:{size:11}}}},scales:{x:{display:false},y:{min:0,grid:{color:gc()},ticks:{color:tc(),callback:function(v){return fb(v)+'/s'}}}},animation:{duration:300}}}
+var netChart=new Chart(netCtx,{type:'line',data:{labels:[],datasets:[]},options:netOpts()});
+
+function rebuild(){cpuChart.options=cpuOpts();netChart.options=netOpts();ramChart.options.scales.y.grid.color=gc();ramChart.options.scales.y.ticks.color=tc();cpuChart.update('none');ramChart.update('none');netChart.update('none')}
+
+function cpuP(c){var idle=c.idle+(c.iowait||0);var tot=c.user+c.nice+c.system+c.idle+(c.iowait||0)+(c.irq||0)+(c.softirq||0);return{idle:idle,total:tot}}
+
+function updCpu(d){
+	if(!d.cores)return;
+	var lab=tl();
+	if(prevCpu){
+		var labels=cpuChart.data.labels,ds=cpuChart.data.datasets;
+		labels.push(lab);if(labels.length>M)labels.shift();
+		for(var i=0;i<d.cores.length;i++){
+			var c=d.cores[i],p=prevCpu[i];if(!p)continue;
+			var cur=cpuP(c),pre=cpuP(p),dt=cur.total-pre.total,di=cur.idle-pre.idle;
+			var pct=dt>0?Math.round((1-di/dt)*1000)/10:0;
+			if(!ds[i]){
+				var col=cols[i%cols.length];
+				ds[i]={label:c.name,data:[],borderColor:col,backgroundColor:col+'22',fill:true,tension:.4,pointRadius:0,borderWidth:i===0?2:1.5,borderDash:i===0?[]:[3,2]};
+			}
+			ds[i].data.push(pct);if(ds[i].data.length>M)ds[i].data.shift();
+		}
+		while(ds.length>d.cores.length)ds.pop();
+		cpuChart.update('none');
+		var sum=0;
+		for(var i=0;i<d.cores.length;i++){
+			var c=d.cores[i],p=prevCpu[i];if(!p)continue;
+			var cur=cpuP(c),pre=cpuP(p),dt=cur.total-pre.total,di=cur.idle-pre.idle;
+			sum+=dt>0?(1-di/dt)*100:0;
+		}
+		document.getElementById('cv').innerHTML=(sum/d.cores.length).toFixed(1)+'<span class="un">%</span>';
+	}
+	prevCpu=d.cores;
+}
+
+function updRam(d){
+	if(d.error)return;
+	var pct=d.total>0?Math.round(d.used/d.total*1000)/10:0;
+	ramH.push(pct);if(ramH.length>M)ramH.shift();
+	ramChart.data.labels=ramH.map(function(){return''});
+	ramChart.data.datasets[0].data=ramH.slice();
+	ramChart.update('none');
+	document.getElementById('rv').innerHTML=Math.round(d.used/1024)+'<span class="un"> / '+Math.round(d.total/1024)+' MB</span>';
+}
+
+function updTraffic(d){
+	var lab=tl(),labels=netChart.data.labels;
+	labels.push(lab);if(labels.length>M)labels.shift();
+	var ifs=Object.keys(d);if(!ifs.length)return;
+	var total=0;
+	for(var i=0;i<ifs.length;i++){
+		var iface=ifs[i],cur=d[iface],prev=prevTr[iface];
+		if(!netH[iface])netH[iface]={rx:[],tx:[]};
+		if(prev){
+			var rxr=Math.max(0,(cur.rx-prev.rx)/(P/1000));
+			var txr=Math.max(0,(cur.tx-prev.tx)/(P/1000));
+			total+=rxr+txr;
+			netH[iface].rx.push(rxr);netH[iface].tx.push(txr);
+			if(netH[iface].rx.length>M)netH[iface].rx.shift();
+			if(netH[iface].tx.length>M)netH[iface].tx.shift();
+		}
+	}
+	prevTr=d;
+	var ds=[];
+	for(var i=0;i<ifs.length;i++){
+		var iface=ifs[i],rc=cols[i%cols.length],tc2=cols[(i+3)%cols.length];
+		ds.push({label:iface+' RX',data:(netH[iface]?netH[iface].rx:[]).slice(),borderColor:rc,backgroundColor:rc+'18',fill:true,tension:.4,pointRadius:0,borderWidth:1.5});
+		ds.push({label:iface+' TX',data:(netH[iface]?netH[iface].tx:[]).slice(),borderColor:tc2,borderDash:[4,2],backgroundColor:'transparent',fill:false,tension:.4,pointRadius:0,borderWidth:1.5});
+	}
+	netChart.data.labels=labels.slice(-M);
+	netChart.data.datasets=ds;
+	netChart.update('none');
+	var u=bu(total);
+	document.getElementById('nv').innerHTML=fbs(total)+'<span class="un">'+u+'</span>';
+}
+
+var timer=null;
+function poll(){
+	Promise.all([
+		fetch(A+'?action=cpu').then(function(r){return r.json()}),
+		fetch(A+'?action=ram').then(function(r){return r.json()}),
+		fetch(A+'?action=traffic').then(function(r){return r.json()})
+	]).then(function(res){updCpu(res[0]);updRam(res[1]);updTraffic(res[2])}).catch(function(e){console.warn('poll:',e)});
+}
+function start(){if(timer)clearInterval(timer);timer=setInterval(poll,P);poll()}
+
+var saved=localStorage.getItem('dash-theme');
+if(saved==='dark'){dark=true;document.body.classList.add('dark')}
+document.getElementById('tb').textContent=dark?'\u2600\uFE0F':'\uD83C\uDF19';
+document.getElementById('tb').onclick=function(){dark=!dark;document.body.classList.toggle('dark',dark);this.textContent=dark?'\u2600\uFE0F':'\uD83C\uDF19';localStorage.setItem('dash-theme',dark?'dark':'light');rebuild()};
+
+var btns=document.querySelectorAll('.dc button[data-r]');
+for(var i=0;i<btns.length;i++){
+	btns[i].onclick=function(){
+		for(var j=0;j<btns.length;j++)btns[j].classList.remove('on');
+		this.classList.add('on');
+	};
+}
+
+start();
+})();
+</script>
+
+<%+footer %>
